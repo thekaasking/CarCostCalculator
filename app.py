@@ -5,6 +5,139 @@ import pandas as pd
 from pprint import pprint
 from bs4 import BeautifulSoup
 
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import Select
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
+
+
+def get_webdriver() -> webdriver:
+    chrome_options = Options()
+    # chrome_options.add_argument("--headless")
+    chrome_options.add_argument("--disable-gpu")
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+    driver = webdriver.Chrome(options=chrome_options)
+
+    return driver
+
+
+def fill_insurance_form(
+    kenteken: str,
+    postcode: str,
+    huisnummer: str,
+    toevoeging: str,
+    dob: str,
+    schadevrije_jaren: int,
+):
+    """
+    Fills in the car insurance comparison form on Independer.nl, navigates to the next page, and fills additional details.
+
+    Args:
+        kenteken (str): License plate number.
+        postcode (str): Postal code.
+        huisnummer (str): House number.
+        toevoeging (str): Address addition (optional).
+        dob (str): Date of birth (format: DD-MM-YYYY).
+        schadevrije_jaren (int): Number of claim-free years.
+    """
+    # Initialize the Chrome WebDriver (ensure chromedriver is in your PATH)
+    driver = get_webdriver()
+    wait = WebDriverWait(driver, 10)
+
+    try:
+        # Navigate to the first webpage
+        url = "https://www.independer.nl/autoverzekering/intro.aspx"
+        driver.get(url)
+
+        # Fill in the 'Kenteken' field
+        kenteken_field = wait.until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, "input[name='kenteken']"))
+        )
+        kenteken_field.send_keys(kenteken)
+
+        # Fill in the 'Postcode' field
+        postcode_field = driver.find_element(
+            By.CSS_SELECTOR, "input[placeholder='bijv. 3563 HH']"
+        )
+        postcode_field.send_keys(postcode)
+
+        # Fill in the 'Huisnummer' field
+        huisnummer_field = driver.find_element(
+            By.CSS_SELECTOR, "input[placeholder='Huisnummer']"
+        )
+        huisnummer_field.send_keys(huisnummer)
+
+        # Fill in the 'Toevoeging' field (optional)
+        toevoeging_field = driver.find_element(
+            By.CSS_SELECTOR, "input[placeholder='toev.']"
+        )
+        toevoeging_field.send_keys(toevoeging)
+
+        # Click on the 'Vergelijk autoverzekeringen' button
+        vergelijk_button = driver.find_element(
+            By.XPATH, "//button[contains(text(), 'Vergelijk autoverzekeringen')]"
+        )
+        vergelijk_button.click()
+
+        # Wait for the next page to load
+        wait.until(
+            EC.presence_of_element_located(
+                (By.XPATH, "//h1[contains(text(), 'Vul je gegevens in')]")
+            )
+        )
+
+        # Fill in the date of birth
+        dob_field = driver.find_element(
+            By.CSS_SELECTOR, "input[placeholder='bijv. 15-01-1981']"
+        )
+        dob_field.send_keys(dob)
+
+        # Select 'Vandaag' for 'Wanneer wil je je verzekering in laten gaan?'
+        vandaag_radio = driver.find_element(
+            By.XPATH, "//label[contains(text(), 'Vandaag')]"
+        )
+        vandaag_radio.click()
+
+        # Select 'Nee' for 'Heb je al een verzekering voor deze auto?'
+        nee_radio = driver.find_element(By.XPATH, "//label[contains(text(), 'Nee')]")
+        nee_radio.click()
+
+        # Fill in the 'Hoeveel schadevrije jaren heb je?' field
+        schadevrije_field = driver.find_element(
+            By.CSS_SELECTOR, "input[placeholder='-5 t/m 99']"
+        )
+        schadevrije_field.send_keys(str(schadevrije_jaren))
+
+        # Select 'Tot en met 7.500' in the dropdown for 'Hoeveel kilometers rij je per jaar?'
+        kilometers_dropdown = driver.find_element(By.CSS_SELECTOR, "select")
+        select = Select(kilometers_dropdown)
+        select.select_by_visible_text("Tot en met 7.500")
+
+        # Click on the 'Ga verder' button
+        ga_verder_button = driver.find_element(
+            By.XPATH, "//button[contains(text(), 'Ga verder')]"
+        )
+        ga_verder_button.click()
+
+        # Optional: Wait to observe results before closing
+        wait.until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, "#some-results-selector"))
+        )
+        print("Form submitted successfully and results loaded.")
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+    finally:
+        driver.quit()
+
 
 def check_valid_kenteken(kenteken: str) -> None:
     """Check if the given Dutch kenteken is valid. If not, raise a ValueError."""
@@ -26,7 +159,7 @@ def check_valid_kenteken(kenteken: str) -> None:
     raise ValueError(f"Invalid kenteken: {kenteken}")
 
 
-def extract_table_data(html: str) -> pd.DataFrame:
+def extract_wegenbelastingen_data(html: str) -> pd.DataFrame:
     soup = BeautifulSoup(html, "html.parser")
 
     rows = soup.find_all("tr", class_="wb-resultaat-bedragen")
@@ -103,11 +236,18 @@ def send_web_request(kenteken: str):
         return None
 
 
-# Example usage
-if __name__ == "__main__":
+def main():
+    fill_insurance_form("XX-123-YY", "3563 HH", "12", "A", "15-01-1981", 5)
+
+    return
     html_content = send_web_request("P-270-JD")
     if html_content:
-        df: pd.DataFrame = extract_table_data(html_content)
+        df: pd.DataFrame = extract_wegenbelastingen_data(html_content)
 
         # Save the DataFrame to a CSV file
         df.to_csv("output.csv", index=False)
+
+
+# Example usage
+if __name__ == "__main__":
+    main()
