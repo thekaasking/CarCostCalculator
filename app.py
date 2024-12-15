@@ -1,5 +1,8 @@
 import re
 import requests
+import pandas as pd
+
+from pprint import pprint
 from bs4 import BeautifulSoup
 
 
@@ -23,28 +26,32 @@ def check_valid_kenteken(kenteken: str) -> None:
     raise ValueError(f"Invalid kenteken: {kenteken}")
 
 
-def extract_table_data(html: str, province_name: str) -> list:
+def extract_table_data(html: str) -> pd.DataFrame:
     soup = BeautifulSoup(html, "html.parser")
 
-    # Find the table with class "wb-resultaat"
-    table = soup.find("table", class_="wb-resultaat")
-    if not table:
-        print("Table not found!")
-        return None
+    rows = soup.find_all("tr", class_="wb-resultaat-bedragen")
 
-    # Find all rows in the table
-    rows = table.find_all("tr", class_="wb-resultaat-bedragen")
-
-    # Extract data for the specified province
+    data = []
     for row in rows:
-        cells = row.find_all("td")
-        if cells and cells[0].get_text(strip=True) == province_name:
-            # Extract all the values from the row
-            values = [cell.get_text(strip=True) for cell in cells[1:]]
-            return values
+        # Only extract direct children, avoiding recursive nesting
+        cols = row.find_all("td", recursive=False)
+        cols = [col.get_text(strip=True) for col in cols]
+        data.append(cols)
 
-    print(f"Province {province_name} not found!")
-    return None
+    data = [row for row in data if len(row) == 7]
+    columns = [
+        "Provincie",
+        "P/m* (Wegenbelasting)",
+        "P/k (Wegenbelasting)",
+        "P/j (Wegenbelasting)",
+        "P/m* (Schone Auto)",
+        "P/k (Schone Auto)",
+        "P/j (Schone Auto)",
+    ]
+
+    df_cleaned = pd.DataFrame(data, columns=columns)
+
+    return df_cleaned
 
 
 def send_web_request(kenteken: str):
@@ -100,6 +107,7 @@ def send_web_request(kenteken: str):
 if __name__ == "__main__":
     html_content = send_web_request("P-270-JD")
     if html_content:
-        results = extract_table_data(html_content, "Noord-Holland")
-        if results:
-            print(results)
+        df: pd.DataFrame = extract_table_data(html_content)
+
+        # Save the DataFrame to a CSV file
+        df.to_csv("output.csv", index=False)
