@@ -32,7 +32,11 @@ def setup_logging():
                 },
             },
             "loggers": {
-                "": {"handlers": ["default"], "level": "INFO", "propagate": True}
+                "": {
+                    "handlers": ["default", "file"],  # Add "file" handler here
+                    "level": "DEBUG",  # Adjust as needed
+                    "propagate": True,
+                }
             },
         }
     )

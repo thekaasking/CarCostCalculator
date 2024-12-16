@@ -57,7 +57,7 @@ def fill_insurance_form(
     schadevrije_jaren: int = request.schadevrije_jaren
 
     # Initialize the Chrome WebDriver (ensure chromedriver is in your PATH)
-    driver: webdriver.Chrome = get_webdriver()
+    driver: webdriver.Chrome = get_webdriver(True)
     wait = WebDriverWait(driver, 10)
 
     try:
@@ -103,7 +103,7 @@ def fill_insurance_form(
             )
         )
         driver.execute_script("arguments[0].click();", vergelijk_button)
-        sleep_after_compare: int = 5
+        sleep_after_compare: int = 4
         logging.debug(
             f"Clicked on the 'Vergelijk' button. Sleeping for {sleep_after_compare} seconds"
         )
@@ -111,11 +111,11 @@ def fill_insurance_form(
             sleep_after_compare
         )  # Small pause before waiting for the next element
 
-        # wait.until(
-        #     EC.presence_of_element_located(
-        #         (By.XPATH, "//h1[contains(text(), 'Vul je gegevens in')]")
-        #     )
-        # )
+        wait.until(
+            EC.presence_of_element_located(
+                (By.XPATH, "//h1[contains(text(), 'Vul je gegevens in')]")
+            )
+        )
         logging.debug("Navigated to the next page with the form")
 
         dob_field = driver.find_element(

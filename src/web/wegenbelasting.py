@@ -1,5 +1,73 @@
+import logging
 import requests
-from src.utils import timer
+import pandas as pd
+from typing import Optional
+
+from src.utils import timer, extract_wegenbelastingen_data
+
+
+def get_wegenbelastingen(
+    kenteken: str,
+    province: Optional[str] = None,
+    timeframe: Optional[str] = "P/k (Wegenbelasting)",
+) -> pd.DataFrame | float:
+    """Get the wegenbelastingen data for the given kenteken.
+
+    Can source from: columns = [
+        "Provincie",
+        "P/m* (Wegenbelasting)",
+        "P/k (Wegenbelasting)",
+        "P/j (Wegenbelasting)",
+        "P/m* (Schone Auto)",
+        "P/k (Schone Auto)",
+        "P/j (Schone Auto)",
+    ]
+
+    Args:
+        kenteken (str): The Dutch license plate number.
+        province (str, optional): The province to filter by. Defaults to None.
+        timeframe (str, optional): The timeframe to filter by. Defaults to None.
+
+    Returns:
+        pd.DataFrame: The extracted data.
+        float: The wegenbelastingen value for the given province and timeframe.
+    """
+    logging.debug(
+        f"Getting wegenbelastingen data for {kenteken=}, {province=}, {timeframe=}"
+    )
+    if timeframe is not None:
+        assert timeframe in [
+            "P/m",
+            "P/k",
+            "P/j",
+            "P/m* (Wegenbelasting)",
+            "P/k (Wegenbelasting)",
+            "P/j (Wegenbelasting)",
+            "P/m* (Schone Auto)",
+            "P/k (Schone Auto)",
+            "P/j (Schone Auto)",
+        ], "Invalid timeframe"
+    # Send the request to wegenbelasting.net
+    html_content = request_wegenbelasting(kenteken)
+
+    if html_content:
+        df = extract_wegenbelastingen_data(html_content)
+        print(df)
+        if province:
+            # check if the province exists in the dataframe
+            if province in df["Provincie"].unique():
+                df = df[df["Provincie"] == province]
+                if timeframe:
+                    return df[timeframe].values[0]
+            else:
+                raise ValueError(f"Province {province} not found in the dataframe")
+        elif timeframe:
+            return df[timeframe].values[0]
+
+        return df
+
+    else:
+        return None
 
 
 @timer
@@ -41,7 +109,7 @@ def request_wegenbelasting(kenteken: str):
 
     try:
         # Log the request being sent
-        print(
+        logging.debug(
             f"Sending POST request to {url} with payload {payload} and headers {headers}"
         )
 
@@ -49,10 +117,12 @@ def request_wegenbelasting(kenteken: str):
         response = requests.post(url, data=payload, headers=headers)
 
         # Log the response status
-        print(f"Response received with status code: {response.status_code}")
+        logging.debug(
+            f"Response received from {url=} with status code: {response.status_code}"
+        )
 
         # Return the response HTML
         return response.text
     except requests.RequestException as e:
-        print(f"An error occurred: {e}")
+        logging.debug(f"An error occurred: {e}")
         return None

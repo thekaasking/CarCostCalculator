@@ -114,6 +114,20 @@ def extract_wegenbelastingen_data(html: str) -> pd.DataFrame:
     ]
 
     df_cleaned = pd.DataFrame(data, columns=columns)
+
+    if df_cleaned.empty:
+        logging.warning(
+            "Found empty DF. Trying alternative extraction method for wegenbelastingen data with 4 columns ..."
+        )
+        data = [row for row in data if len(row) == 4]
+        columns = [
+            "Provincie",
+            "P/m*",
+            "P/k",
+            "P/j",
+        ]
+        df_cleaned = pd.DataFrame(data, columns=columns)
+
     logging.debug("Data extracted successfully from the HTML content.")
 
     return df_cleaned
