@@ -111,11 +111,11 @@ def fill_insurance_form(
             sleep_after_compare
         )  # Small pause before waiting for the next element
 
-        wait.until(
-            EC.presence_of_element_located(
-                (By.XPATH, "//h1[contains(text(), 'Vul je gegevens in')]")
-            )
-        )
+        # wait.until(
+        #     EC.presence_of_element_located(
+        #         (By.XPATH, "//h1[contains(text(), 'Vul je gegevens in')]")
+        #     )
+        # )
         logging.debug("Navigated to the next page with the form")
 
         dob_field = driver.find_element(
