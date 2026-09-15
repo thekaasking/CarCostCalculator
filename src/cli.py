@@ -2,7 +2,7 @@
 
 Usage:
     uv run .\\run.py ZT-026-P                  # one plate, non-interactive
-    uv run .\\run.py ZT-026-P PJ-VP-22          # compare multiple plates
+    uv run .\\run.py ZT-026-P JFN-60-N          # compare multiple plates
     uv run .\\run.py                            # REPL: prompts for plates
     uv run .\\run.py ZT-026-P --coverage all_risk --export costs.csv
 """
@@ -221,9 +221,7 @@ def export_results(
     console.print(f"Exported to {path}")
 
 
-def repl(
-    profile: Profile, coverage: str
-) -> tuple[list[CostRow], list[VehicleInfo]]:
+def repl(profile: Profile, coverage: str) -> tuple[list[CostRow], list[VehicleInfo]]:
     """Prompt for one kenteken at a time, printing each result immediately.
 
     This is a single-lookup loop, not compare mode: each plate's result is

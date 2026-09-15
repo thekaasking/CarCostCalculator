@@ -32,11 +32,11 @@ Run the project from the root with `uv run .\run.py`, either as a direct command
 arguments to get a REPL:
 
 ```bash
-# One plate, non-interactive. Dashes are optional: PJVP22 works too.
+# One plate, non-interactive. Dashes are optional: JFN60N works too.
 uv run .\run.py ZT-026-P
 
 # Compare multiple plates side by side
-uv run .\run.py ZT-026-P PJ-VP-22
+uv run .\run.py ZT-026-P JFN-60-N
 
 # No plate given -> prompts for one at a time until you enter a blank line
 uv run .\run.py
@@ -81,7 +81,7 @@ running `run.py` and checking the printed results.
 
 - `InsuranceRequest` performs basic input validation in `src/models.py`.
 - `normalize_kenteken()` accepts a plate with or without dashes/spaces, in
-  any case (e.g. `pjvp22`), and reinserts dashes at the right spots based on
+  any case (e.g. `jfn60n`), and reinserts dashes at the right spots based on
   the plate's letter/digit shape.
 - `get_wegenbelastingen()` accepts both the current table columns (`P/m*`, `P/k`, `P/j`) and the older wegenbelasting.net labels.
 - Independer's insurance flow shows WA/WA+/All Risk price quotes inline on

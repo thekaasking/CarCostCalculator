@@ -137,7 +137,7 @@ class TestParseArgs:
         args = cli_module.parse_args(
             [
                 "ZT-026-P",
-                "PJ-VP-22",
+                "JFN-60-N",
                 "--coverage",
                 "all_risk",
                 "--dob",
@@ -147,7 +147,7 @@ class TestParseArgs:
             ]
         )
 
-        assert args.kentekens == ["ZT-026-P", "PJ-VP-22"]
+        assert args.kentekens == ["ZT-026-P", "JFN-60-N"]
         assert args.coverage == "all_risk"
         assert args.geboortedatum == "01-01-1990"
         assert args.export == "costs.csv"

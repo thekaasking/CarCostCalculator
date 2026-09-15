@@ -85,8 +85,8 @@ def check_valid_kenteken(kenteken: str) -> None:
 
 # Dutch kentekens are always 6 alphanumeric characters, grouped into 3 dashed
 # parts. The letter/digit "shape" of those 6 characters uniquely identifies
-# which of the 8 group-length patterns applies, e.g. "PJVP22" has shape
-# "LLLLDD" -> groups (2, 2, 2) -> "PJ-VP-22". Kept in sync with the regexes
+# which of the 8 group-length patterns applies, e.g. "JFN60N" has shape
+# "LLLLDD" -> groups (2, 2, 2) -> "JFN-60-N". Kept in sync with the regexes
 # in check_valid_kenteken().
 _KENTEKEN_SHAPES: dict[str, tuple[int, ...]] = {
     "LLDDLL": (2, 2, 2),  # XX-99-XX
@@ -104,7 +104,7 @@ def normalize_kenteken(kenteken: str) -> str:
     """Normalize a Dutch kenteken to its canonical dashed form.
 
     Accepts the plate with or without dashes/spaces, in any case, e.g.
-    "pjvp22" or "PJ VP 22", and returns "PJ-VP-22".
+    "jfn60n" or "JFN 60 N", and returns "JFN-60-N".
 
     Args:
         kenteken (str): The raw kenteken, with or without separators.

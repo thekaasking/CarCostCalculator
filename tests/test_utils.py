@@ -143,7 +143,7 @@ class TestNormalizeKenteken:
         [
             ("AB12CD", "AB-12-CD"),
             ("12AB34", "12-AB-34"),
-            ("PJVP22", "PJ-VP-22"),  # XX-XX-99 shape
+            ("JFN60N", "JFN-60-N"),  # XX-XX-99 shape
             ("12ABC3", "12-ABC-3"),
             ("A123BC", "A-123-BC"),
             ("AB123C", "AB-123-C"),
@@ -155,13 +155,13 @@ class TestNormalizeKenteken:
         assert normalize_kenteken(raw) == expected
 
     def test_is_case_insensitive(self):
-        assert normalize_kenteken("pjvp22") == "PJ-VP-22"
+        assert normalize_kenteken("jfn60n") == "JFN-60-N"
 
     def test_accepts_already_dashed_input(self):
-        assert normalize_kenteken("PJ-VP-22") == "PJ-VP-22"
+        assert normalize_kenteken("JFN-60-N") == "JFN-60-N"
 
     def test_strips_spaces(self):
-        assert normalize_kenteken("PJ VP 22") == "PJ-VP-22"
+        assert normalize_kenteken("JFN 60 N") == "JFN-60-N"
 
     @pytest.mark.parametrize("raw", ["", "TOOLONGPLATE", "12345", "AB-12-C@"])
     def test_rejects_unknown_shapes(self, raw):
