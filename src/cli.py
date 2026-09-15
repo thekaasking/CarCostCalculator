@@ -134,7 +134,12 @@ def export_results(rows: list[CostRow], path: str) -> None:
 
 
 def repl(profile: Profile, coverage: str) -> list[CostRow]:
-    """Prompt for one kenteken at a time until the user enters a blank line."""
+    """Prompt for one kenteken at a time, printing each result immediately.
+
+    This is a single-lookup loop, not compare mode: each plate's result is
+    shown as soon as it's computed rather than batched up. To compare plates
+    side by side, pass them all as CLI arguments instead.
+    """
     rows: list[CostRow] = []
     console.print("Enter a kenteken to look up (blank to quit).")
     while True:
@@ -145,9 +150,12 @@ def repl(profile: Profile, coverage: str) -> list[CostRow]:
         if not raw:
             break
         try:
-            rows.append(compute_costs(raw, profile, coverage))
+            row = compute_costs(raw, profile, coverage)
         except Exception as e:
             console.print(f"[red]Error:[/red] {e}")
+            continue
+        rows.append(row)
+        print_results([row])
     return rows
 
 
@@ -198,18 +206,22 @@ def main(argv: list[str] | None = None) -> None:
             setattr(profile, field_name, override)
 
     if args.kentekens:
+        # Multiple plates on the command line is the one "compare mode":
+        # results are gathered first and shown together in one table.
         rows = [
             compute_costs(kenteken, profile, args.coverage)
             for kenteken in args.kentekens
         ]
+        print_results(rows)
     else:
+        # REPL mode is a plain one-at-a-time lookup; repl() already prints
+        # each result as it's computed, so there's nothing left to print here.
         rows = repl(profile, args.coverage)
 
     if not rows:
         logging.info("No results to show.")
         return
 
-    print_results(rows)
     if args.export:
         export_results(rows, args.export)
 

@@ -30,6 +30,13 @@ def get_webdriver(debug: bool = False) -> webdriver:
     # Independer renders a different (mobile) layout at small viewport sizes;
     # force a desktop-sized window so headless runs see the same markup.
     chrome_options.add_argument("--window-size=1400,2200")
+    # Chrome's own subprocess (not chromedriver) writes harmless noise to
+    # stderr on Windows -- "DevTools listening on ws://..." and GCM
+    # registration/login errors, since we don't sign in to a Google account.
+    # excludeSwitches drops the --enable-logging flag chromedriver adds by
+    # default, which is what triggers Chrome to log to stderr at all.
+    chrome_options.add_experimental_option("excludeSwitches", ["enable-logging"])
+    chrome_options.add_argument("--log-level=3")
     driver = webdriver.Chrome(options=chrome_options)
 
     return driver
