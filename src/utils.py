@@ -150,6 +150,37 @@ def parse_euro_amount(value: str) -> float:
     return float(cleaned)
 
 
+def parse_rdw_date(value: str | None) -> str | None:
+    """Parse an RDW "YYYYMMDD" date string into "DD-MM-YYYY".
+
+    Args:
+        value (str | None): The raw RDW date field, e.g. "20140508".
+
+    Returns:
+        str | None: "08-05-2014", or None if value is missing/blank.
+    """
+    if not value:
+        return None
+    return f"{value[6:8]}-{value[4:6]}-{value[:4]}"
+
+
+def parse_rdw_number(value: str | None) -> float | None:
+    """Parse a numeric RDW field into a float.
+
+    Unlike the Dutch-formatted prices on wegenbelasting.net/Independer, RDW's
+    open data API uses a plain "." decimal separator, e.g. "5.30".
+
+    Args:
+        value (str | None): The raw RDW numeric field.
+
+    Returns:
+        float | None: The parsed number, or None if value is missing/blank.
+    """
+    if not value:
+        return None
+    return float(value)
+
+
 @timer
 def extract_wegenbelastingen_data(html: str) -> pd.DataFrame:
     """Extract the wegenbelastingen data from the given HTML content.
