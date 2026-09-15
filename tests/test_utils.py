@@ -7,6 +7,8 @@ from src.utils import (
     extract_wegenbelastingen_data,
     normalize_kenteken,
     parse_euro_amount,
+    parse_rdw_date,
+    parse_rdw_number,
 )
 
 
@@ -179,3 +181,24 @@ class TestParseEuroAmount:
     )
     def test_parses_dutch_formatted_amounts(self, raw, expected):
         assert parse_euro_amount(raw) == expected
+
+
+class TestParseRdwDate:
+    def test_parses_yyyymmdd(self):
+        assert parse_rdw_date("20140508") == "08-05-2014"
+
+    @pytest.mark.parametrize("value", [None, ""])
+    def test_returns_none_for_missing_value(self, value):
+        assert parse_rdw_date(value) is None
+
+
+class TestParseRdwNumber:
+    def test_parses_period_decimal(self):
+        assert parse_rdw_number("5.30") == 5.3
+
+    def test_parses_integer_string(self):
+        assert parse_rdw_number("121") == 121.0
+
+    @pytest.mark.parametrize("value", [None, ""])
+    def test_returns_none_for_missing_value(self, value):
+        assert parse_rdw_number(value) is None

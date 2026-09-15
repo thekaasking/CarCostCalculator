@@ -2,7 +2,7 @@ import pytest
 
 import src.cli as cli_module
 from src.config import Profile
-from src.models import InsuranceResult
+from src.models import InsuranceResult, VehicleInfo
 
 
 @pytest.fixture
@@ -14,6 +14,23 @@ def profile():
         geboortedatum="25-09-2002",
         schadevrije_jaren=3,
     )
+
+
+def make_vehicle_info(**overrides):
+    defaults = dict(
+        kenteken="ZT-026-P",
+        merk="SEAT",
+        model="LEON ST",
+        voertuigsoort="Personenauto",
+        datum_eerste_toelating="08-05-2014",
+        brandstof="Benzine",
+        brandstofverbruik_gecombineerd=5.3,
+        co2_uitstoot_gecombineerd=121,
+        zuinigheidsclassificatie="A",
+        catalogusprijs=31591,
+    )
+    defaults.update(overrides)
+    return VehicleInfo(**defaults)
 
 
 @pytest.fixture(autouse=True)
@@ -34,6 +51,11 @@ def mock_scrapers(monkeypatch):
         cli_module,
         "get_wegenbelastingen",
         lambda kenteken, timeframe=None: "62",
+    )
+    monkeypatch.setattr(
+        cli_module,
+        "get_vehicle_info",
+        lambda kenteken: make_vehicle_info(kenteken=kenteken),
     )
 
 
@@ -57,6 +79,23 @@ class TestComputeCosts:
         row = cli_module.compute_costs("ZT-026-P", profile, coverage)
 
         assert row.insurance_monthly == expected_price
+
+
+class TestComputeVehicleInfo:
+    def test_normalizes_kenteken_before_lookup(self):
+        info = cli_module.compute_vehicle_info("zt026p")
+
+        assert info.kenteken == "ZT-026-P"
+        assert info.merk == "SEAT"
+
+
+class TestLookup:
+    def test_returns_cost_and_vehicle_info_for_the_same_plate(self, profile):
+        cost, vehicle = cli_module.lookup("zt026p", profile, "wa_plus")
+
+        assert cost.kenteken == "ZT-026-P"
+        assert vehicle.kenteken == "ZT-026-P"
+        assert vehicle.merk == "SEAT"
 
 
 class TestParseArgs:

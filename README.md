@@ -2,10 +2,11 @@
 
 Small Python CLI for quickly comparing car-related monthly costs in the Netherlands.
 
-It combines two scrapers into one monthly figure per license plate:
+It combines three sources into one monthly figure plus vehicle specs per license plate:
 
 - `src/web/independer.py` automates Independer to collect car insurance comparison data.
 - `src/web/wegenbelasting.py` posts a license plate to wegenbelasting.net and extracts road-tax results per province.
+- `src/web/rdw.py` reads the RDW's (Dutch vehicle authority) open data API for make/model, fuel type, consumption, CO2, and list price.
 
 ## Project layout
 
@@ -55,13 +56,17 @@ file.
 
 The "Total/mo" column adds the chosen insurance tier's monthly premium
 (`--coverage wa|wa_plus|all_risk`, default `wa_plus`) to the road tax's
-monthly (`P/m`) figure.
+monthly (`P/m`) figure. Every lookup also prints a "Vehicle info (RDW)" table
+(make/model, fuel type, combined consumption, CO2, efficiency class, list
+price) and includes those fields in `--export`. RDW's data is sparse --
+not every field is populated for every vehicle, especially electric/hybrid
+ones -- so missing fields show as "—".
 
 ## Testing
 
-Unit tests cover validation, kenteken/price parsing, HTML parsing, and the
-wegenbelasting request/filter logic (network calls are mocked, so they run
-offline and fast):
+Unit tests cover validation, kenteken/price/RDW-field parsing, HTML parsing,
+and the wegenbelasting/RDW request logic (network calls are mocked, so they
+run offline and fast):
 
 ```bash
 uv run pytest
@@ -83,3 +88,8 @@ running `run.py` and checking the printed results.
   the "Vul je gegevens in" page (no separate results page), so
   `fill_insurance_form()` reads all three coverage cards directly off that
   page instead of navigating further.
+- `src/web/rdw.py` joins RDW's base vehicle dataset (`m9d7-ebf2`) with its
+  fuel dataset (`8ys7-d773`) on kenteken. A vehicle can have more than one
+  fuel row (hybrids); `brandstof_volgnummer` orders them, and all of them are
+  shown (e.g. "Benzine + Elektriciteit"), while consumption/CO2 come from the
+  primary (first) row.
