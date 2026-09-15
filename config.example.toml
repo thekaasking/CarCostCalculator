@@ -1,0 +1,14 @@
+# Personal defaults for the CLI (src/config.py).
+#
+# Copy this file to config.toml and fill in your own details:
+#   cp config.example.toml config.toml
+#
+# config.toml is gitignored since it holds personal information; only this
+# example file is committed. If config.toml doesn't exist, the CLI will
+# prompt for these values on first run and create it for you.
+
+postcode = "voorbeeld"
+huisnummer = "10"
+toevoeging = ""
+geboortedatum = "01-01-2004"
+schadevrije_jaren = 2
