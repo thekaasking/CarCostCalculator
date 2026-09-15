@@ -5,6 +5,8 @@ from src.utils import (
     check_valid_dob,
     check_valid_kenteken,
     extract_wegenbelastingen_data,
+    normalize_kenteken,
+    parse_euro_amount,
 )
 
 
@@ -131,3 +133,49 @@ class TestExtractWegenbelastingenData:
         df = extract_wegenbelastingen_data(html)
 
         assert df.empty
+
+
+class TestNormalizeKenteken:
+    @pytest.mark.parametrize(
+        "raw, expected",
+        [
+            ("AB12CD", "AB-12-CD"),
+            ("12AB34", "12-AB-34"),
+            ("PJVP22", "PJ-VP-22"),  # XX-XX-99 shape
+            ("12ABC3", "12-ABC-3"),
+            ("A123BC", "A-123-BC"),
+            ("AB123C", "AB-123-C"),
+            ("1AB234", "1-AB-234"),
+            ("1ABC23", "1-ABC-23"),
+        ],
+    )
+    def test_normalizes_compact_plate_by_shape(self, raw, expected):
+        assert normalize_kenteken(raw) == expected
+
+    def test_is_case_insensitive(self):
+        assert normalize_kenteken("pjvp22") == "PJ-VP-22"
+
+    def test_accepts_already_dashed_input(self):
+        assert normalize_kenteken("PJ-VP-22") == "PJ-VP-22"
+
+    def test_strips_spaces(self):
+        assert normalize_kenteken("PJ VP 22") == "PJ-VP-22"
+
+    @pytest.mark.parametrize("raw", ["", "TOOLONGPLATE", "12345", "AB-12-C@"])
+    def test_rejects_unknown_shapes(self, raw):
+        with pytest.raises(ValueError):
+            normalize_kenteken(raw)
+
+
+class TestParseEuroAmount:
+    @pytest.mark.parametrize(
+        "raw, expected",
+        [
+            ("75,71", 75.71),
+            ("62", 62.0),
+            ("€ 75,71", 75.71),
+            ("1.234,56", 1234.56),
+        ],
+    )
+    def test_parses_dutch_formatted_amounts(self, raw, expected):
+        assert parse_euro_amount(raw) == expected
