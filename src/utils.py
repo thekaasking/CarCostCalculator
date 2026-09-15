@@ -1,7 +1,8 @@
-import re
 import logging
+import re
 from functools import wraps
 from time import time
+
 import pandas as pd
 from bs4 import BeautifulSoup
 
@@ -68,7 +69,9 @@ def check_valid_kenteken(kenteken: str) -> None:
         r"^[A-Z]{2}-[A-Z]{2}-\d{2}$",  # Format: XX-XX-99
         r"^\d{2}-[A-Z]{3}-\d{1}$",  # Format: 99-XXX-9
         r"^[A-Z]{1}-\d{3}-[A-Z]{2}$",  # Format: X-999-XX
+        r"^[A-Z]{2}-\d{3}-[A-Z]{1}$",  # Format: XX-999-X
         r"^\d{1}-[A-Z]{2}-\d{3}$",  # Format: 9-XX-999
+        r"^\d{1}-[A-Z]{3}-\d{2}$",  # Format: 9-XXX-99
     ]
 
     # Check if the plate matches any of the patterns
@@ -95,38 +98,48 @@ def extract_wegenbelastingen_data(html: str) -> pd.DataFrame:
 
     rows = soup.find_all("tr", class_="wb-resultaat-bedragen")
 
-    data = []
+    data_4_columns: list[list[str]] = []
+    data_7_columns: list[list[str]] = []
     for row in rows:
         # Only extract direct children, avoiding recursive nesting
         cols = row.find_all("td", recursive=False)
-        cols = [col.get_text(strip=True) for col in cols]
-        data.append(cols)
+        row_values = [col.get_text(strip=True) for col in cols]
+        if len(row_values) == 4:
+            data_4_columns.append(row_values)
+        elif len(row_values) == 7:
+            data_7_columns.append(row_values)
 
-    data = [row for row in data if len(row) == 7]
-    columns = [
-        "Provincie",
-        "P/m* (Wegenbelasting)",
-        "P/k (Wegenbelasting)",
-        "P/j (Wegenbelasting)",
-        "P/m* (Schone Auto)",
-        "P/k (Schone Auto)",
-        "P/j (Schone Auto)",
-    ]
-
-    df_cleaned = pd.DataFrame(data, columns=columns)
-
-    if df_cleaned.empty:
-        logging.warning(
-            "Found empty DF. Trying alternative extraction method for wegenbelastingen data with 4 columns ..."
-        )
-        data = [row for row in data if len(row) == 4]
+    if data_4_columns:
+        columns = ["Provincie", "P/m*", "P/k", "P/j"]
+        df_cleaned = pd.DataFrame(data_4_columns, columns=columns)
+    elif data_7_columns:
         columns = [
             "Provincie",
-            "P/m*",
-            "P/k",
-            "P/j",
+            "P/m* (Wegenbelasting)",
+            "P/k (Wegenbelasting)",
+            "P/j (Wegenbelasting)",
+            "P/m* (Schone Auto)",
+            "P/k (Schone Auto)",
+            "P/j (Schone Auto)",
         ]
-        df_cleaned = pd.DataFrame(data, columns=columns)
+        df_cleaned = pd.DataFrame(data_7_columns, columns=columns)
+        df_cleaned = df_cleaned[
+            [
+                "Provincie",
+                "P/m* (Wegenbelasting)",
+                "P/k (Wegenbelasting)",
+                "P/j (Wegenbelasting)",
+            ]
+        ].rename(
+            columns={
+                "P/m* (Wegenbelasting)": "P/m*",
+                "P/k (Wegenbelasting)": "P/k",
+                "P/j (Wegenbelasting)": "P/j",
+            }
+        )
+    else:
+        logging.warning("No wegenbelastingen rows with 4 or 7 columns were found.")
+        df_cleaned = pd.DataFrame(columns=["Provincie", "P/m*", "P/k", "P/j"])
 
     logging.debug("Data extracted successfully from the HTML content.")
 

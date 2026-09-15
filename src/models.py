@@ -26,6 +26,3 @@ class InsuranceRequest:
     def __post_init__(self):
         check_valid_kenteken(self.kenteken)
         check_valid_dob(self.geboortedatum)
-
-
-# class WegenbelastingenResult:

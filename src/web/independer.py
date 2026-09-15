@@ -27,9 +27,46 @@ def get_webdriver(debug: bool = False) -> webdriver:
         chrome_options.add_argument("--headless")
     chrome_options.add_argument("--disable-gpu")
     chrome_options.add_argument("--disable-dev-shm-usage")
+    # Independer renders a different (mobile) layout at small viewport sizes;
+    # force a desktop-sized window so headless runs see the same markup.
+    chrome_options.add_argument("--window-size=1400,2200")
     driver = webdriver.Chrome(options=chrome_options)
 
     return driver
+
+
+def _read_coverage_card(
+    driver: webdriver.Chrome, wait: WebDriverWait, coverage: str
+) -> tuple[str, str]:
+    """Read the count and starting price off one coverage card.
+
+    Args:
+        driver: The active Chrome WebDriver.
+        wait: A WebDriverWait bound to `driver`.
+        coverage: The coverage's data-testid suffix ("wa", "bc", or "vc").
+
+    Returns:
+        tuple[str, str]: The (count, price) text shown on the card.
+    """
+    card = wait.until(
+        EC.presence_of_element_located(
+            (By.XPATH, f"//label[@data-testid='label-input-{coverage}']")
+        )
+    )
+    price_el = wait.until(
+        EC.presence_of_element_located(
+            (
+                By.XPATH,
+                f"//label[@data-testid='label-input-{coverage}']"
+                "//strong[contains(@class, 'price')]",
+            )
+        )
+    )
+    count_el = card.find_element(
+        By.XPATH,
+        ".//div[contains(@class, 'dekking-verzekeringen-vanaf')]//strong/span",
+    )
+    return count_el.text, price_el.text
 
 
 @timer
@@ -37,7 +74,8 @@ def fill_insurance_form(
     request: InsuranceRequest,
 ) -> InsuranceResult:
     """
-    Fills in the car insurance comparison form on Independer.nl, navigates to the next page, and fills additional details.
+    Fills in the car insurance comparison form on Independer.nl and reads the
+    resulting WA/WA+/All Risk price quotes.
 
     Args:
         request (InsuranceRequest): The request object containing the user's details.
@@ -71,6 +109,10 @@ def fill_insurance_form(
         )
         cookie_button.click()
         logging.debug("Clicked on the cookie button")
+        # The consent banner takes a moment to animate away; interacting with
+        # the form fields immediately after the click raises
+        # ElementNotInteractableException.
+        time.sleep(1)
 
         kenteken_field = wait.until(
             EC.presence_of_element_located((By.CSS_SELECTOR, "input[name='kenteken']"))
@@ -88,11 +130,22 @@ def fill_insurance_form(
         huisnummer_field.send_keys(huisnummer)
         logging.debug(f"Filled in the huisnummer field with {huisnummer}")
 
-        toevoeging_field = driver.find_element(
-            By.CSS_SELECTOR, "input[name='huisnummertoevoeging']"
-        )
-        toevoeging_field.send_keys(toevoeging)
-        logging.debug(f"Filled in the toevoeging field with {toevoeging}")
+        # The "toevoeging" input is only rendered visible when the address has
+        # more than one option; it stays hidden (but present) otherwise, and
+        # sending keys to a hidden field raises ElementNotInteractableException.
+        if toevoeging:
+            toevoeging_field = driver.find_element(
+                By.CSS_SELECTOR, "input[name='huisnummertoevoeging']"
+            )
+            if toevoeging_field.is_displayed():
+                toevoeging_field.send_keys(toevoeging)
+                logging.debug(f"Filled in the toevoeging field with {toevoeging}")
+            else:
+                logging.debug("Toevoeging field is hidden; skipping")
+
+        # The address lookup triggered by the huisnummer field is debounced;
+        # clicking 'Vergelijk' before it settles silently no-ops.
+        time.sleep(1)
 
         vergelijk_button = wait.until(
             EC.element_to_be_clickable(
@@ -152,42 +205,14 @@ def fill_insurance_form(
         select.select_by_visible_text("Tot en met 7.500")
         logging.debug("Selected 'Tot en met 7.500' from the dropdown")
 
-        # Click on the 'Ga verder' button
-        ga_verder_button = driver.find_element(
-            By.XPATH, "//button[contains(text(), 'Ga verder')]"
-        )
-        driver.execute_script("arguments[0].click();", ga_verder_button)
-
-        sleep_after_ga_verder: int = 5
-        logging.debug(
-            f"Clicked on the 'Ga verder' button. Sleeping for {sleep_after_ga_verder} seconds"
-        )
-        time.sleep(sleep_after_ga_verder)
-
+        # Once every field above is filled in, Independer loads a price quote
+        # asynchronously into each of the three coverage cards on the same
+        # page (WA, WA+/"bc", All Risk/"vc") -- there is no separate results
+        # page to navigate to.
         logging.debug("Extracting insurance price data...")
-        # Extract counts and prices for WA
-        wa_count = driver.find_element(
-            By.XPATH, "//strong[contains(@class, 'ng-tns-c12299694-13')]/span"
-        ).text
-        wa_price = driver.find_element(
-            By.XPATH, "//strong[contains(@class, 'price ng-tns-c12299694-13')]"
-        ).text
-
-        # Extract counts and prices for WA+
-        wa_plus_count = driver.find_element(
-            By.XPATH, "//strong[contains(@class, 'ng-tns-c12299694-15')]/span"
-        ).text
-        wa_plus_price = driver.find_element(
-            By.XPATH, "//strong[contains(@class, 'price ng-tns-c12299694-15')]"
-        ).text
-
-        # Extract counts and prices for All Risk
-        all_risk_count = driver.find_element(
-            By.XPATH, "//strong[contains(@class, 'ng-tns-c12299694-17')]/span"
-        ).text
-        all_risk_price = driver.find_element(
-            By.XPATH, "//strong[contains(@class, 'price ng-tns-c12299694-17')]"
-        ).text
+        wa_count, wa_price = _read_coverage_card(driver, wait, "wa")
+        wa_plus_count, wa_plus_price = _read_coverage_card(driver, wait, "bc")
+        all_risk_count, all_risk_price = _read_coverage_card(driver, wait, "vc")
 
         logging.debug("Successfully extracted insurance data!")
         logging.debug(f"WA: {wa_count} verzekeringen, vanaf €{wa_price}")

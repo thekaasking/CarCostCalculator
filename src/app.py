@@ -1,12 +1,10 @@
-import pandas as pd
-from src.models import InsuranceResult, InsuranceRequest
-
+from src.models import InsuranceRequest, InsuranceResult
 from src.web.independer import fill_insurance_form
 from src.web.wegenbelasting import get_wegenbelastingen
 
 
 def main():
-    kenteken: str = "N-214-JD"
+    kenteken: str = "ZT-026-P"
 
     car_request: InsuranceRequest = InsuranceRequest(
         kenteken=kenteken,
@@ -17,8 +15,8 @@ def main():
         schadevrije_jaren=3,
     )
 
-    # insuranse_result: InsuranceResult = fill_insurance_form(request=car_request)
-    # print(insuranse_result)
+    insuranse_result: InsuranceResult = fill_insurance_form(request=car_request)
+    print(insuranse_result)
     wegenbelastingen_data_kwartaal = get_wegenbelastingen(
         kenteken=kenteken, province="Zuid-Holland"
     )

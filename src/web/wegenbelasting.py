@@ -1,15 +1,16 @@
 import logging
-import requests
-import pandas as pd
 from typing import Optional
 
-from src.utils import timer, extract_wegenbelastingen_data
+import pandas as pd
+import requests
+
+from src.utils import extract_wegenbelastingen_data, timer
 
 
 def get_wegenbelastingen(
     kenteken: str,
     province: Optional[str] = None,
-    timeframe: Optional[str] = "P/k (Wegenbelasting)",
+    timeframe: Optional[str] = "P/k",
 ) -> pd.DataFrame | float:
     """Get the wegenbelastingen data for the given kenteken.
 
@@ -35,24 +36,23 @@ def get_wegenbelastingen(
     logging.debug(
         f"Getting wegenbelastingen data for {kenteken=}, {province=}, {timeframe=}"
     )
+    timeframe_aliases = {
+        "P/m": "P/m*",
+        "P/k": "P/k",
+        "P/j": "P/j",
+        "P/m* (Wegenbelasting)": "P/m*",
+        "P/k (Wegenbelasting)": "P/k",
+        "P/j (Wegenbelasting)": "P/j",
+    }
     if timeframe is not None:
-        assert timeframe in [
-            "P/m",
-            "P/k",
-            "P/j",
-            "P/m* (Wegenbelasting)",
-            "P/k (Wegenbelasting)",
-            "P/j (Wegenbelasting)",
-            "P/m* (Schone Auto)",
-            "P/k (Schone Auto)",
-            "P/j (Schone Auto)",
-        ], "Invalid timeframe"
+        assert timeframe in timeframe_aliases, "Invalid timeframe"
     # Send the request to wegenbelasting.net
     html_content = request_wegenbelasting(kenteken)
 
     if html_content:
         df = extract_wegenbelastingen_data(html_content)
-        print(df)
+        if timeframe is not None:
+            timeframe = timeframe_aliases[timeframe]
         if province:
             # check if the province exists in the dataframe
             if province in df["Provincie"].unique():
@@ -88,7 +88,7 @@ def request_wegenbelasting(kenteken: str):
     # Define the headers
     headers = {
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
-        "Accept-Encoding": "gzip, deflate, br, zstd",
+        "Accept-Encoding": "gzip, deflate",
         "Accept-Language": "nl-NL,nl;q=0.6",
         "Cache-Control": "max-age=0",
         "Connection": "keep-alive",
