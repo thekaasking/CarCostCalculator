@@ -98,6 +98,32 @@ class TestLookup:
         assert vehicle.merk == "SEAT"
 
 
+class TestTryLookup:
+    def test_returns_result_for_a_valid_plate(self, profile):
+        result = cli_module._try_lookup("zt026p", profile, "wa_plus")
+
+        assert result is not None
+        cost, vehicle = result
+        assert cost.kenteken == "ZT-026-P"
+
+    def test_returns_none_and_prints_error_for_an_invalid_plate(self, profile):
+        result = cli_module._try_lookup("not-a-plate", profile, "wa_plus")
+
+        assert result is None
+
+    def test_one_bad_plate_does_not_stop_the_rest_from_resolving(self, profile):
+        # Regression test: a stray/invalid token among several plates used to
+        # crash the whole compare-mode run instead of just being skipped.
+        results = [
+            cli_module._try_lookup(raw, profile, "wa_plus")
+            for raw in ["kentekens", "ZT-026-P"]
+        ]
+
+        assert results[0] is None
+        assert results[1] is not None
+        assert results[1][0].kenteken == "ZT-026-P"
+
+
 class TestParseArgs:
     def test_defaults(self):
         args = cli_module.parse_args([])

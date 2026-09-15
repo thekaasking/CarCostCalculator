@@ -116,6 +116,21 @@ def lookup(
     return cost, vehicle
 
 
+def _try_lookup(
+    raw_kenteken: str, profile: Profile, coverage: str
+) -> tuple[CostRow, VehicleInfo] | None:
+    """Look up one plate, printing a friendly error instead of raising.
+
+    Used everywhere a single bad plate (typo, invalid format, a scrape
+    failure) shouldn't take down an entire multi-plate run.
+    """
+    try:
+        return lookup(raw_kenteken, profile, coverage)
+    except Exception as e:
+        console.print(f"[red]Error looking up {raw_kenteken}:[/red] {e}")
+        return None
+
+
 def print_results(rows: list[CostRow]) -> None:
     table = Table(title="Monthly car costs")
     table.add_column("Kenteken")
@@ -225,11 +240,10 @@ def repl(
             break
         if not raw:
             break
-        try:
-            cost, vehicle = lookup(raw, profile, coverage)
-        except Exception as e:
-            console.print(f"[red]Error:[/red] {e}")
+        result = _try_lookup(raw, profile, coverage)
+        if result is None:
             continue
+        cost, vehicle = result
         cost_rows.append(cost)
         vehicle_rows.append(vehicle)
         print_results([cost])
@@ -242,7 +256,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "kentekens",
         nargs="*",
-        help="One or more license plates. Omit to enter REPL mode.",
+        metavar="KENTEKEN",
+        help="One or more license plates, e.g. 'run.py GG-973-H'. "
+        "Omit entirely to enter REPL mode.",
     )
     parser.add_argument(
         "--coverage",
@@ -285,12 +301,19 @@ def main(argv: list[str] | None = None) -> None:
 
     if args.kentekens:
         # Multiple plates on the command line is the one "compare mode":
-        # results are gathered first and shown together in one table.
-        results = [lookup(kenteken, profile, args.coverage) for kenteken in args.kentekens]
+        # results are gathered first and shown together in one table. A bad
+        # plate in the mix is reported and skipped rather than crashing the
+        # whole run.
+        results = [
+            result
+            for kenteken in args.kentekens
+            if (result := _try_lookup(kenteken, profile, args.coverage)) is not None
+        ]
         cost_rows = [cost for cost, _ in results]
         vehicle_rows = [vehicle for _, vehicle in results]
-        print_results(cost_rows)
-        print_vehicle_table(vehicle_rows)
+        if cost_rows:
+            print_results(cost_rows)
+            print_vehicle_table(vehicle_rows)
     else:
         # REPL mode is a plain one-at-a-time lookup; repl() already prints
         # each result as it's computed, so there's nothing left to print here.
