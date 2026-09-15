@@ -83,6 +83,73 @@ def check_valid_kenteken(kenteken: str) -> None:
     raise ValueError(f"Invalid kenteken: {kenteken}")
 
 
+# Dutch kentekens are always 6 alphanumeric characters, grouped into 3 dashed
+# parts. The letter/digit "shape" of those 6 characters uniquely identifies
+# which of the 8 group-length patterns applies, e.g. "PJVP22" has shape
+# "LLLLDD" -> groups (2, 2, 2) -> "PJ-VP-22". Kept in sync with the regexes
+# in check_valid_kenteken().
+_KENTEKEN_SHAPES: dict[str, tuple[int, ...]] = {
+    "LLDDLL": (2, 2, 2),  # XX-99-XX
+    "DDLLDD": (2, 2, 2),  # 99-XX-99
+    "LLLLDD": (2, 2, 2),  # XX-XX-99
+    "DDLLLD": (2, 3, 1),  # 99-XXX-9
+    "LDDDLL": (1, 3, 2),  # X-999-XX
+    "LLDDDL": (2, 3, 1),  # XX-999-X
+    "DLLDDD": (1, 2, 3),  # 9-XX-999
+    "DLLLDD": (1, 3, 2),  # 9-XXX-99
+}
+
+
+def normalize_kenteken(kenteken: str) -> str:
+    """Normalize a Dutch kenteken to its canonical dashed form.
+
+    Accepts the plate with or without dashes/spaces, in any case, e.g.
+    "pjvp22" or "PJ VP 22", and returns "PJ-VP-22".
+
+    Args:
+        kenteken (str): The raw kenteken, with or without separators.
+
+    Returns:
+        str: The canonical dashed kenteken.
+
+    Raises:
+        ValueError: If the kenteken doesn't match any known format.
+    """
+    compact = re.sub(r"[\s-]", "", kenteken).upper()
+    shape = "".join(
+        "L" if ch.isalpha() else "D" if ch.isdigit() else "?" for ch in compact
+    )
+    groups = _KENTEKEN_SHAPES.get(shape)
+    if groups is None:
+        raise ValueError(f"Invalid kenteken: {kenteken}")
+
+    parts = []
+    pos = 0
+    for size in groups:
+        parts.append(compact[pos : pos + size])
+        pos += size
+    normalized = "-".join(parts)
+
+    check_valid_kenteken(normalized)
+    return normalized
+
+
+def parse_euro_amount(value: str) -> float:
+    """Parse a Dutch-formatted euro amount into a float.
+
+    Handles a comma decimal separator and an optional "." thousands
+    separator or "€" sign, e.g. "75,71" -> 75.71, "€ 1.234,56" -> 1234.56.
+
+    Args:
+        value (str): The amount as shown on the source website.
+
+    Returns:
+        float: The parsed amount.
+    """
+    cleaned = value.replace("€", "").strip().replace(".", "").replace(",", ".")
+    return float(cleaned)
+
+
 @timer
 def extract_wegenbelastingen_data(html: str) -> pd.DataFrame:
     """Extract the wegenbelastingen data from the given HTML content.
